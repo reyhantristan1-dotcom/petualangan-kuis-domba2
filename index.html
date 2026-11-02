@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Petualangan Kuis Domba</title>
+<style>
+  :root { --green:#28734d; --pale:#eff8ef; --gold:#f2c45c; --ink:#24352b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui, sans-serif; color:var(--ink); background:linear-gradient(135deg,#e8f6e8,#fff7df); min-height:100vh; display:grid; place-items:center; padding:18px; }
+  main { width:min(680px,100%); background:white; border-radius:24px; padding:clamp(20px,5vw,36px); box-shadow:0 12px 35px #24452b20; }
+  .sheep { font-size:58px; text-align:center; }
+  h1 { text-align:center; color:var(--green); margin:4px 0 8px; }
+  .intro { text-align:center; line-height:1.55; }
+  .meta { display:flex; justify-content:space-between; gap:12px; color:#587060; font-size:.92rem; margin:22px 0 8px; }
+  .track { height:9px; background:#e8eee8; border-radius:20px; overflow:hidden; }
+  .fill { height:100%; width:0; background:#55a873; transition:width .25s; }
+  .question { font-size:1.25rem; font-weight:700; line-height:1.4; margin:24px 0 18px; }
+  .answers { display:grid; gap:11px; }
+  button { font:inherit; cursor:pointer; border:0; border-radius:13px; padding:13px 16px; }
+  .answer { text-align:left; background:#f1f6f1; border:2px solid transparent; color:var(--ink); }
+  .answer:hover:not(:disabled) { border-color:#79b88d; background:#eaf5ec; }
+  .answer:disabled { cursor:default; opacity:1; }
+  .answer.correct { background:#e2f5e6; border-color:#4b9a60; }
+  .answer.wrong { background:#fff0e9; border-color:#d98668; }
+  .feedback { min-height:52px; margin:16px 0 4px; line-height:1.5; }
+  .primary { background:var(--green); color:white; width:100%; margin-top:12px; font-weight:700; }
+  .primary:hover { background:#1e5d3d; }
+  .hidden { display:none; }
+  .result { text-align:center; }
+  .score { font-size:2.4rem; font-weight:800; color:var(--green); margin:8px; }
+  .small { color:#607366; font-size:.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <section id="start">
+    <div class="sheep">🐑</div>
+    <h1>Petualangan Kuis Domba</h1>
+    <p class="intro">Uji pengetahuanmu tentang keunikan domba, jenis-jenisnya, dan bagian tubuhnya. Jawab 10 pertanyaan untuk mendapatkan skor terbaik!</p>
+    <button class="primary" id="begin">Mulai kuis</button>
+    <p class="small" style="text-align:center">Setiap jawaban benar mendapat 10 poin.</p>
+  </section>
+
+  <section id="game" class="hidden">
+    <div class="meta"><span id="counter">Pertanyaan 1/10</span><strong id="scoreLabel">Skor: 0</strong></div>
+    <div class="track"><div class="fill" id="progress"></div></div>
+    <div class="question" id="question"></div>
+    <div class="answers" id="answers"></div>
+    <div class="feedback" id="feedback" aria-live="polite"></div>
+    <button class="primary hidden" id="next">Pertanyaan berikutnya</button>
+  </section>
+
+  <section id="result" class="hidden result">
+    <div class="sheep">🏆🐏</div>
+    <h1>Kuis selesai!</h1>
+    <p>Skor akhir kamu:</p>
+    <div class="score" id="finalScore">0/100</div>
+    <p id="message"></p>
+    <button class="primary" id="again">Main lagi</button>
+  </section>
+</main>
+<script>
+const questions = [
+ {q:"Pupil mata domba umumnya berbentuk seperti apa?",a:["Bulat sempurna","Persegi panjang horizontal","Segitiga","Garis vertikal"],c:1,e:"Pupil horizontal membantu domba memiliki bidang pandang yang sangat luas."},
+ {q:"Menurut materi, domba dapat mengingat hingga berapa wajah individu?",a:["5 wajah","10 wajah","50 wajah","500 wajah"],c:2,e:"Domba dapat mengingat hingga sekitar 50 wajah domba lain dan manusia selama bertahun-tahun."},
+ {q:"Apa nama proses ketika domba mengunyah kembali makanan yang sudah ditelan?",a:["Fotosintesis","Memamah biak","Moulting","Migrasi"],c:1,e:"Domba adalah hewan ruminansia yang memamah biak."},
+ {q:"Ada berapa bagian utama lambung pada domba?",a:["1","2","3","4"],c:3,e:"Empat bagiannya adalah rumen, retikulum, omasum, dan abomasum."},
+ {q:"Domba Merino berasal dari negara mana menurut materi?",a:["Indonesia","Spanyol","Jepang","Mesir"],c:1,e:"Domba Merino dikenal menghasilkan wool yang sangat halus."},
+ {q:"Domba Garut berasal dari daerah mana?",a:["Jawa Barat","Sumatra Barat","Bali","Kalimantan Timur"],c:0,e:"Domba Garut merupakan domba khas Jawa Barat, Indonesia."},
+ {q:"Apa nama minyak alami yang terdapat pada wool domba?",a:["Keratin","Lanolin","Klorofil","Melanin"],c:1,e:"Lanolin adalah minyak alami yang terdapat pada wool."},
+ {q:"Berapa jumlah jari kuku pada setiap kaki domba?",a:["Satu","Dua","Tiga","Empat"],c:1,e:"Domba memiliki kuku belah dengan dua jari pada setiap kaki."},
+ {q:"Apa yang dimiliki domba pada rahang atas sebagai pengganti gigi seri atas?",a:["Taring tajam","Paruh keras","Bantalan gigi (dental pad)","Gigi geraham tambahan"],c:2,e:"Dental pad adalah bantalan keras yang membantu domba memotong rumput."},
+ {q:"Bagian tubuh yang pada domba jantan dapat digunakan untuk mempertahankan diri dan menunjukkan dominasi adalah ...",a:["Telinga","Tanduk","Ekor","Bulu"],c:1,e:"Tanduk dapat berperan dalam pertahanan diri dan menunjukkan dominasi."}
+];
+let index=0, score=0, locked=false;
+const $=id=>document.getElementById(id);
+function showQuestion(){
+ locked=false;
+ const item=questions[index];
+ $("counter").textContent=`Pertanyaan ${index+1}/${questions.length}`;
+ $("scoreLabel").textContent=`Skor: ${score}`;
+ $("progress").style.width=`${index/questions.length*100}%`;
+ $("question").textContent=item.q;
+ $("feedback").textContent="";
+ $("next").classList.add("hidden");
+ $("answers").innerHTML="";
+ item.a.forEach((answer,i)=>{
+   const b=document.createElement("button");
+   b.className="answer"; b.textContent=String.fromCharCode(65+i)+". "+answer;
+   b.addEventListener("click",()=>choose(i,b));
+   $("answers").appendChild(b);
+ });
+}
+function choose(choice,button){
+ if(locked)return;
+ locked=true;
+ const item=questions[index];
+ [...$("answers").children].forEach((b,i)=>{
+   b.disabled=true;
+   if(i===item.c)b.classList.add("correct");
+ });
+ if(choice===item.c){score+=10;$("feedback").textContent="Benar! "+item.e;}
+ else {button.classList.add("wrong");$("feedback").textContent="Belum tepat. "+item.e;}
+ $("scoreLabel").textContent=`Skor: ${score}`;
+ $("next").textContent=index===questions.length-1?"Lihat hasil":"Lanjut";
+ $("next").classList.remove("hidden");
+}
+function finish(){
+ $("game").classList.add("hidden");$("result").classList.remove("hidden");
+ $("progress").style.width="100%";
+ $("finalScore").textContent=`${score}/100`;
+ $("message").textContent=score===100?"Sempurna! Kamu ahli dunia domba!":score>=70?"Hebat! Pengetahuanmu tentang domba sudah bagus.":score>=40?"Bagus! Terus pelajari fakta unik tentang domba.":"Terus semangat belajar. Coba lagi untuk meningkatkan skormu!";
+}
+function start(){
+ index=0;score=0;
+ $("start").classList.add("hidden");$("result").classList.add("hidden");$("game").classList.remove("hidden");
+ showQuestion();
+}
+$("begin").addEventListener("click",start);
+$("again").addEventListener("click",start);
+$("next").addEventListener("click",()=>{if(index<questions.length-1){index++;showQuestion();}else finish();});
+</script>
+</body>
+</html>
